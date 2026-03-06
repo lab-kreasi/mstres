@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import { User, Lock, ArrowRight, UserPlus, LogIn, Phone } from 'lucide-react';
-import Modal from './Modal'; // Pastikan path import sesuai
+import Modal from './Modal'; 
 
 const Auth = ({ onLogin }) => {
   const [isRegister, setIsRegister] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
-  // State untuk mengontrol Modal Sukses Register
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -15,6 +13,9 @@ const Auth = ({ onLogin }) => {
     username: '',
     password: ''
   });
+
+  // Ambil API_URL sekali saja di sini
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -27,38 +28,49 @@ const Auth = ({ onLogin }) => {
     setError('');
 
     const endpoint = isRegister ? '/api/register' : '/api/login';
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const fullUrl = `${API_URL}${endpoint}`;
 
     try {
-      const response = await fetch(`${API_URL}${endpoint}`, {
+      console.log(`Mencoba menghubungi: ${fullUrl}`); // Log untuk debugging
+
+      const response = await fetch(fullUrl, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify(formData),
-        });
+      });
+
+      // CEK APAKAH SERVER MERESPONS (Bukan 404 atau 500)
+      if (response.status === 404) {
+        throw new Error(`Endpoint tidak ditemukan (404). Pastikan server backend sudah memiliki rute ${endpoint}`);
+      }
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Terjadi kesalahan sistem');
+        throw new Error(data.error || 'Terjadi kesalahan pada akun');
       }
 
       if (isRegister) {
-        // Ganti alert() dengan membuka Modal
         setIsSuccessModalOpen(true);
       } else {
         if (data.token) localStorage.setItem('token', data.token);
         onLogin(data.user);
       }
     } catch (err) {
-      setError(err.message);
+      // Menangani error "Failed to fetch" (Server mati / CORS)
+      if (err.message === 'Failed to fetch') {
+        setError("Tidak dapat terhubung ke server. Pastikan backend sudah jalan dan URL API di Netlify sudah benar.");
+      } else {
+        setError(err.message);
+      }
+      console.error("Auth Error:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Fungsi yang dipanggil saat tombol di Modal Sukses diklik
   const handleSuccessConfirm = () => {
     setIsSuccessModalOpen(false);
     setIsRegister(false);
@@ -68,14 +80,13 @@ const Auth = ({ onLogin }) => {
   return (
     <div className="main" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
       
-      {/* MODAL REGISTRASI BERHASIL */}
       <Modal 
         isOpen={isSuccessModalOpen}
         type="success"
         title="Registrasi Berhasil!"
         message="Akun kamu telah dibuat. Silakan masuk menggunakan nomor HP dan password terdaftar."
         confirmText="Masuk Sekarang"
-        showCancel={false} // Sembunyikan tombol batal agar user fokus login
+        showCancel={false}
         onClose={() => setIsSuccessModalOpen(false)}
         onSubmit={handleSuccessConfirm}
       />
@@ -92,9 +103,6 @@ const Auth = ({ onLogin }) => {
           <h2 style={{ margin: 0, color: '#1e293b' }}>
             {isRegister ? 'Daftar Akun' : 'Masuk Aplikasi'}
           </h2>
-          <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '8px' }}>
-            {isRegister ? 'Gunakan nomor HP aktifmu' : 'Masuk dengan nomor HP terdaftar'}
-          </p>
         </div>
 
         {error && (
@@ -176,7 +184,6 @@ const Auth = ({ onLogin }) => {
   );
 };
 
-// Reusable input style
 const inputStyle = {
   width: '100%', 
   padding: '12px 12px 12px 40px', 

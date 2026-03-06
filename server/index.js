@@ -9,7 +9,7 @@ const app = express();
 
 // --- 1. KONFIGURASI CORS (UNTUK DOMAIN BARU) ---
 const allowedOrigins = [
-  'https://plannerku.com',      // Ganti dengan domain asli kamu
+  'https://labkreasi.my.id',      // Ganti dengan domain asli kamu
   'https://www.plannerku.com', 
   'http://localhost:5173'       // Tetap izinkan testing lokal
 ];
