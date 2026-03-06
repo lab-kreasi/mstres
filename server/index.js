@@ -6,11 +6,36 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const app = express();
-app.use(cors());
+
+// --- 1. KONFIGURASI CORS (UNTUK DOMAIN BARU) ---
+const allowedOrigins = [
+  'https://plannerku.com',      // Ganti dengan domain asli kamu
+  'https://www.plannerku.com', 
+  'http://localhost:5173'       // Tetap izinkan testing lokal
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Izinkan request tanpa origin (seperti mobile apps/Postman)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'Kebijakan CORS tidak mengizinkan akses dari origin ini.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
+}));
+
 app.use(express.json());
 
+// --- 2. KONEKSI DATABASE (NEON DB) ---
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false // Wajib aktif untuk koneksi cloud (Neon/Render)
+  }
 });
 
 pool.connect((err) => {
@@ -18,7 +43,7 @@ pool.connect((err) => {
   else console.log('Terhubung ke Neon DB 🚀');
 });
 
-// --- AUTHENTICATION ---
+// --- 3. AUTHENTICATION ENDPOINTS ---
 
 app.post('/api/register', async (req, res) => {
   const { phone_number, username, password } = req.body;
@@ -54,7 +79,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// --- DASHBOARD & STATS ---
+// --- 4. DASHBOARD & STATS ---
 
 app.get('/api/dashboard-stats/:userId', async (req, res) => {
   const { userId } = req.params;
@@ -78,9 +103,8 @@ app.get('/api/dashboard-stats/:userId', async (req, res) => {
   }
 });
 
-// --- TASKS / PLANNER ---
+// --- 5. TASKS / PLANNER ---
 
-// 1. Ambil semua tugas berdasarkan User ID (untuk kalender)
 app.get('/api/tasks/:userId', async (req, res) => {
   const { userId } = req.params;
   try {
@@ -94,7 +118,6 @@ app.get('/api/tasks/:userId', async (req, res) => {
   }
 });
 
-// Simpan tugas baru
 app.post('/api/tasks', async (req, res) => {
   const { user_id, title, category, date } = req.body;
   try {
@@ -110,7 +133,6 @@ app.post('/api/tasks', async (req, res) => {
   }
 });
 
-// Update status selesai (Check/Uncheck)
 app.patch('/api/tasks/:id/toggle', async (req, res) => {
   const { id } = req.params;
   try {
@@ -124,7 +146,18 @@ app.patch('/api/tasks/:id/toggle', async (req, res) => {
   }
 });
 
-// --- MOOD TRACKER ---
+// Endpoint baru untuk menghapus tugas (sinkron dengan Modal)
+app.delete('/api/tasks/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query('DELETE FROM tasks WHERE id = $1', [id]);
+    res.json({ message: "Tugas berhasil dihapus" });
+  } catch (err) {
+    res.status(500).json({ error: "Gagal menghapus tugas" });
+  }
+});
+
+// --- 6. MOOD TRACKER ---
 
 app.post('/api/moods', async (req, res) => {
   const { user_id, score } = req.body;
@@ -139,7 +172,7 @@ app.post('/api/moods', async (req, res) => {
   }
 });
 
-// --- JURNAL ---
+// --- 7. JURNAL / BRAIN DUMP ---
 
 app.get('/api/journals/:userId', async (req, res) => {
   const { userId } = req.params;
@@ -154,6 +187,18 @@ app.get('/api/journals/:userId', async (req, res) => {
   }
 });
 
+// Endpoint baru untuk menghapus jurnal (sinkron dengan Modal)
+app.delete('/api/journals/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query('DELETE FROM journals WHERE id = $1', [id]);
+    res.json({ message: "Catatan berhasil dihapus" });
+  } catch (err) {
+    res.status(500).json({ error: "Gagal menghapus catatan" });
+  }
+});
+
+// --- 8. SERVER LISTEN ---
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server jalan di port ${PORT}`);
