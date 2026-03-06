@@ -8,30 +8,33 @@ const BrainDump = ({ user }) => {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
+  // --- DEFINISIKAN SEKALI DI SINI ---
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
   // 1. Ambil Riwayat Jurnal dari Database
   const fetchJournals = useCallback(async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/journals/${user.id}`);
+      const response = await fetch(`${API_URL}/api/journals/${user.id}`);
       const data = await response.json();
-      setSavedNotes(data);
+      setSavedNotes(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Gagal mengambil riwayat jurnal:", err);
     } finally {
       setLoading(false);
     }
-  }, [user.id]);
+  }, [user.id, API_URL]);
 
   useEffect(() => {
     if (user?.id) fetchJournals();
   }, [user.id, fetchJournals]);
 
-  // 2. Fungsi Simpan (Manual & Auto)
+  // 2. Fungsi Simpan
   const handleSave = async () => {
     if (!note.trim()) return;
 
     setIsSaving(true);
     try {
-      const response = await fetch('http://localhost:5000/api/journals', {
+      const response = await fetch(`${API_URL}/api/journals`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -42,8 +45,8 @@ const BrainDump = ({ user }) => {
       });
 
       if (response.ok) {
-        setNote(''); // Kosongkan input setelah simpan manual
-        fetchJournals(); // Refresh riwayat
+        setNote(''); 
+        fetchJournals(); 
       }
     } catch (err) {
       console.error("Gagal menyimpan jurnal:", err);
@@ -56,8 +59,13 @@ const BrainDump = ({ user }) => {
   const deleteNote = async (id) => {
     if (!window.confirm("Hapus catatan ini?")) return;
     try {
-      await fetch(`http://localhost:5000/api/journals/${id}`, { method: 'DELETE' });
-      setSavedNotes(savedNotes.filter(n => n.id !== id));
+      const response = await fetch(`${API_URL}/api/journals/${id}`, { 
+        method: 'DELETE' 
+      });
+      
+      if (response.ok) {
+        setSavedNotes(prev => prev.filter(n => n.id !== id));
+      }
     } catch (err) {
       console.error("Gagal menghapus:", err);
     }

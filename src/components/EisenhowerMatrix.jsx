@@ -13,22 +13,25 @@ const EisenhowerMatrix = ({ user }) => {
   const [newTask, setNewTask] = useState('');
   const [loading, setLoading] = useState(true);
   
+  // Konfigurasi URL Dinamis
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
   // State untuk Modal Kustom
   const [modal, setModal] = useState({ isOpen: false, taskId: null });
 
   const fetchTasks = useCallback(async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/tasks/${user.id}`);
+      // PERBAIKAN: Menggunakan API_URL
+      const response = await fetch(`${API_URL}/api/tasks/${user.id}`);
       if (!response.ok) throw new Error("Gagal mengambil data");
       const data = await response.json();
-      // Pastikan data yang diterima adalah array
       setTasks(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Gagal memuat Matrix:", err);
     } finally {
       setLoading(false);
     }
-  }, [user.id]);
+  }, [user.id, API_URL]);
 
   useEffect(() => {
     if (user?.id) fetchTasks();
@@ -37,20 +40,20 @@ const EisenhowerMatrix = ({ user }) => {
   const addTask = async () => {
     if (!newTask.trim()) return;
     try {
-      const response = await fetch('http://localhost:5000/api/tasks', {
+      // PERBAIKAN: Menggunakan API_URL
+      const response = await fetch(`${API_URL}/api/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: user.id,
           title: newTask.trim(),
-          category: 'urgent-important', // Default quadrant
+          category: 'urgent-important',
           date: new Date().toISOString().split('T')[0]
         }),
       });
       
       if (response.ok) {
         const addedTask = await response.json();
-        // Update state secara lokal agar langsung muncul tanpa reload full
         setTasks(prev => [...prev, addedTask]);
         setNewTask('');
       }
@@ -61,7 +64,8 @@ const EisenhowerMatrix = ({ user }) => {
 
   const toggleTask = async (taskId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/tasks/${taskId}/toggle`, {
+      // PERBAIKAN: Menggunakan API_URL
+      const response = await fetch(`${API_URL}/api/tasks/${taskId}/toggle`, {
         method: 'PATCH',
       });
       if (response.ok) {
@@ -80,7 +84,8 @@ const EisenhowerMatrix = ({ user }) => {
     const nextCategory = categories[(currentIndex + 1) % 4];
 
     try {
-      const response = await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
+      // PERBAIKAN: Menggunakan API_URL
+      const response = await fetch(`${API_URL}/api/tasks/${taskId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ category: nextCategory }),
@@ -93,7 +98,8 @@ const EisenhowerMatrix = ({ user }) => {
 
   const confirmDelete = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/tasks/${modal.taskId}`, { 
+      // PERBAIKAN: Menggunakan API_URL
+      const response = await fetch(`${API_URL}/api/tasks/${modal.taskId}`, { 
         method: 'DELETE' 
       });
       if (response.ok) {
@@ -106,6 +112,7 @@ const EisenhowerMatrix = ({ user }) => {
     }
   };
 
+  // ... sisa kode render UI tetap sama ...
   if (loading) return <div className="main">Memuat prioritas...</div>;
 
   return (

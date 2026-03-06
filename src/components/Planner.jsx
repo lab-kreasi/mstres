@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import Modal from './Modal'; // Import komponen modal yang baru
+import Modal from './Modal'; 
 
 const Planner = ({ user }) => {
   const [events, setEvents] = useState([]);
@@ -11,19 +11,22 @@ const Planner = ({ user }) => {
   const [selectedDateStr, setSelectedDateStr] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // 1. Ambil data tugas dari Database saat pertama kali buka
+  // KONFIGURASI URL DINAMIS
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+  // 1. Ambil data tugas dari Database
   const fetchTasks = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/tasks/${user.id}`);
+      // PERBAIKAN: Menggunakan API_URL
+      const response = await fetch(`${API_URL}/api/tasks/${user.id}`);
       const data = await response.json();
       
-      // Sesuaikan format data dari DB ke format FullCalendar
-      const formattedEvents = data.map(task => ({
+      const formattedEvents = Array.isArray(data) ? data.map(task => ({
         id: task.id,
         title: task.title,
-        start: task.created_at, // Sesuaikan dengan kolom tanggal di DB kamu
+        start: task.start || task.created_at, 
         color: '#3b82f6'
-      }));
+      })) : [];
       setEvents(formattedEvents);
     } catch (err) {
       console.error("Gagal mengambil data tugas:", err);
@@ -34,7 +37,6 @@ const Planner = ({ user }) => {
     if (user?.id) fetchTasks();
   }, [user.id]);
 
-  // 2. Fungsi saat tanggal diklik (Buka Modal)
   const handleDateClick = (arg) => {
     setSelectedDateStr(arg.dateStr);
     setIsModalOpen(true);
@@ -46,13 +48,14 @@ const Planner = ({ user }) => {
     
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/tasks', {
+      // PERBAIKAN: Menggunakan API_URL
+      const response = await fetch(`${API_URL}/api/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: user.id,
           title: newTaskTitle,
-          category: 'urgent-important', // Default category untuk Matrix
+          category: 'urgent-important', 
           date: selectedDateStr
         }),
       });
@@ -60,7 +63,7 @@ const Planner = ({ user }) => {
       if (response.ok) {
         setIsModalOpen(false);
         setNewTaskTitle('');
-        fetchTasks(); // Refresh kalender agar tugas baru muncul
+        fetchTasks(); 
       }
     } catch (err) {
       alert("Gagal menyimpan rencana");
@@ -83,12 +86,11 @@ const Planner = ({ user }) => {
             height="auto"
             eventBackgroundColor="#3b82f6"
             eventBorderColor="transparent"
-            locale="id" // Menggunakan bahasa Indonesia jika tersedia
+            locale="id" 
           />
         </div>
       </div>
 
-      {/* INTEGRASI MODAL */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

@@ -7,6 +7,9 @@ const Dashboard = ({ user, setActiveTab }) => {
   const [loading, setLoading] = useState(true);
   const [savingMood, setSavingMood] = useState(false);
 
+  // --- DEFINISIKAN SEKALI DI SINI ---
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
   const moodOptions = [
     { emoji: '😢', score: 2, label: 'Sedih' },
     { emoji: '😐', score: 5, label: 'Biasa' },
@@ -17,17 +20,19 @@ const Dashboard = ({ user, setActiveTab }) => {
   const fetchDashboardData = useCallback(async () => {
     try {
       // 1. Ambil Statistik Mood & Total Tugas
-      const statsRes = await fetch(`http://localhost:5000/api/dashboard-stats/${user.id}`);
+      const statsRes = await fetch(`${API_URL}/api/dashboard-stats/${user.id}`);
       const statsData = await statsRes.json();
       setStats(statsData);
 
       // 2. Ambil Semua Tugas & Filter untuk Prioritas (Urgent & Penting)
-      const tasksRes = await fetch(`http://localhost:5000/api/tasks/${user.id}`);
+      const tasksRes = await fetch(`${API_URL}/api/tasks/${user.id}`);
       const tasksData = await tasksRes.json();
       
-      const urgentTasks = tasksData
-        .filter(t => t.category === 'urgent-important' && !t.is_completed)
-        .slice(0, 5); // Ambil maksimal 5 tugas teratas
+      const urgentTasks = Array.isArray(tasksData) 
+        ? tasksData
+            .filter(t => t.category === 'urgent-important' && !t.is_completed)
+            .slice(0, 5)
+        : [];
       
       setPriorityTasks(urgentTasks);
     } catch (error) {
@@ -35,7 +40,7 @@ const Dashboard = ({ user, setActiveTab }) => {
     } finally {
       setLoading(false);
     }
-  }, [user.id]);
+  }, [user.id, API_URL]);
 
   useEffect(() => {
     if (user?.id) fetchDashboardData();
@@ -44,11 +49,12 @@ const Dashboard = ({ user, setActiveTab }) => {
   const handleMoodClick = async (score) => {
     setSavingMood(true);
     try {
-      const response = await fetch('http://localhost:5000/api/moods', {
+      const response = await fetch(`${API_URL}/api/moods`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: user.id, score: score }),
       });
+      
       if (response.ok) fetchDashboardData();
     } catch (error) {
       console.error("Gagal menyimpan mood:", error);
@@ -57,6 +63,7 @@ const Dashboard = ({ user, setActiveTab }) => {
     }
   };
 
+  // ... (Sisa kode render UI tetap sama seperti yang kamu tulis)
   if (loading) return <div className="main">Memuat Dashboard...</div>;
 
   return (
@@ -99,7 +106,6 @@ const Dashboard = ({ user, setActiveTab }) => {
         </div>
       </div>
 
-      {/* Stats Grid */}
       <div className="stats-grid">
         <div className="card stat-card" style={{ borderLeft: '5px solid #10b981' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -122,7 +128,6 @@ const Dashboard = ({ user, setActiveTab }) => {
         </div>
       </div>
 
-      {/* Prioritas Utama (Urgent & Penting) */}
       <div className="card" style={{ marginTop: '20px', borderLeft: '6px solid #ef4444' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0, fontSize: '1.1rem', color: '#ef4444' }}>
@@ -155,7 +160,6 @@ const Dashboard = ({ user, setActiveTab }) => {
         </div>
       </div>
 
-      {/* Analisis Personal */}
       <div className="card" style={{ marginTop: '20px' }}>
         <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px', fontSize: '1.1rem' }}>
           <TrendingUp size={20} color="#3b82f6" /> Analisis Personal
